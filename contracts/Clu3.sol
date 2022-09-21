@@ -8,12 +8,10 @@ error Clu3__NotOwner();
 
 error Clu3__TimestampAlreadyPassed();
 
-error Clu3__SignerNotValid();
-
 error Clu3__InvalidSigner();
 
 /**
- * @title Clu3: a smart contract to create transactions
+ * @title Clu3: a smart contract to prevent bots
  * @notice
  * @author Jesus Badillo
  */

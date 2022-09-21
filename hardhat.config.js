@@ -86,10 +86,10 @@ module.exports = {
             },
             {
                 network: "optimismGoerli",
-                chainId: 402,
+                chainId: 420,
                 urls: {
-                    apiURL: "https://api-optimistic.etherscan.io/api",
-                    browserURL: "https://goerli-optimism.etherscan.io/",
+                    apiURL: "https://blockscout.com/optimism/goerli/api ",
+                    browserURL: "https://blockscout.com/optimism/goerli",
                 },
             },
             {
