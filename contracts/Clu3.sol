@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.7;
 
 import "./Clu3Whitelist.sol";
 import "./VerifySigner.sol";
@@ -10,19 +10,21 @@ error Clu3__TimestampAlreadyPassed();
 
 error Clu3__SignerNotValid();
 
+error Clu3__InvalidSigner();
+
 /**
  * @title Clu3: a smart contract to create transactions
  * @notice
  * @author Jesus Badillo
  */
-contract Clu3 is VerifySignature {
-    /**
-     *  @notice
-     *  @dev
-     */
+contract Clu3 is Clu3Whitelist {
+    // Inherit verification functions from VerifySigner Library
+    using VerifySigner for address;
 
     // Enumerate the correct Web3 storage implementations
+    // Web3 Service (IPFS, Ceramic, Tableland, Filecoin)
     enum Web3StorageImplementation {
+        ON_CHAIN,
         IPFS,
         TABLELAND,
         FILECOIN,
@@ -34,50 +36,57 @@ contract Clu3 is VerifySignature {
     uint256 private immutable i_lifespan;
     address private immutable i_owner;
     uint256 private immutable i_eventTimestamp;
-    bytes private s_clu3Id;
-
-    // Web3 Service (IPFS, Ceramic, Tableland, Filecoin)
-    Clu3Whitelist private s_clu3Whitelist;
+    uint256 private s_maxWhitelistAddresses;
+    string private s_message;
+    string private s_clu3Id;
+    Web3StorageImplementation private s_web3Service;
 
     struct Clu3Event {
         uint256 clu3EventTimestamp;
         address clueEventAddress;
     }
 
+    event SignerVerified(address indexed _signer);
+    event AddressInWhiteList(address indexed _currentAddress);
+
     constructor(
         address _signer,
         uint256 _lifespan,
-        uint256 _clu3Id
-    ) {
+        string memory _message,
+        string memory _clu3Id
+    ) Clu3Whitelist(s_maxWhitelistAddresses) {
         i_signer = _signer;
         i_lifespan = _lifespan;
         s_clu3Id = _clu3Id;
+        s_message = _message;
         i_eventTimestamp = block.timestamp;
         i_owner = msg.sender;
+        s_web3Service = Web3StorageImplementation.ON_CHAIN;
     }
 
-    modifier onlyOwner() {
+    modifier onlyOwner() override {
         if (msg.sender != i_owner) {
             revert Clu3__NotOwner();
         }
         _;
     }
 
-    function senderInWhitelist(address _sender) public view returns (bool) {
-        if (s_clu3Whitelist.isWhitelisted(_sender)) {
+    function senderInWhitelist(address _sender) private returns (bool) {
+        if (isWhitelisted(_sender)) {
             return true;
         }
+        emit AddressInWhiteList(_sender);
         return false;
     }
 
-    function isWhitelistImplemented() public view returns (bool) {
-        if (s_clu3Whitelist.getNumberOfWhitelistedAddresses() == 0) {
+    function isWhitelistImplemented() private view returns (bool) {
+        if (getNumberOfWhitelistedAddresses() == 0) {
             return false;
         }
         return true;
     }
 
-    function createClu3Transaction() private view returns (bool) {
+    function isClu3Transaction() private returns (bool) {
         if (!senderInWhitelist(msg.sender) || !isWhitelistImplemented()) {
             return true;
         }
@@ -86,13 +95,24 @@ contract Clu3 is VerifySignature {
             revert Clu3__TimestampAlreadyPassed();
         }
 
-        if (verifyMessage(_hashedMessage, _v, _r, _s) != i_signer) {}
-        // bytes32 eve = keccak256(
-        //     abi.encodePacked(
-        //         i_owner,
-        //         s_clu3Whitelist.s_whitelistAddresses,
-        //         lifespan
-        //     )
-        // );
+        // Verify that the message: "timestamp-clu3_id-sender_address"
+        if ((msg.sender).verifySigner(s_message) != msg.sender) {
+            revert Clu3__InvalidSigner();
+        }
+
+        emit SignerVerified(msg.sender);
+
+        return false;
     }
+
+    // function implementWeb3Storage() private returns (bool) {
+    //     if (s_web3Service == Web3StorageImplementation.IPFS) {
+
+    //     }
+    //     //else if (s_web3Service == Web3StorageImplementation.FILECOIN) {
+    //     //     //s_web3Service;
+    //     // } else if (s_web3Service == Web3StorageImplementation.CERAMIC) {
+    //     //     //s_web3Service;
+    //     // } else if (s_web3Service == Web3StorageImplementation.TABLELAND) {}
+    // }
 }

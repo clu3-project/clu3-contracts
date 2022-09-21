@@ -1,18 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8;
+pragma solidity ^0.8.7;
 
-contract VerifySignature {
-    function getMessageHash(
-        address _to,
-        uint256 _amount,
-        string memory _message,
-        uint256 _nonce
-    ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_to, _amount, _message, _nonce));
+error VerifySigner__InvalidSignatureLength();
+
+/**
+ * @title VerifySignature - use the signer address and a message to verify the signer of a message on chain
+ * @author Jesus Badillo
+ * @dev
+ */
+
+library VerifySigner {
+    function getMessageHash(string memory _message)
+        private
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(_message));
     }
 
     function getEthSignedMessageHash(bytes32 _messageHash)
-        public
+        private
         pure
         returns (bytes32)
     {
@@ -25,44 +32,40 @@ contract VerifySignature {
             );
     }
 
-    function verify(
-        address _signer,
-        address _to,
-        uint256 _amount,
-        string memory _message,
-        uint256 _nonce,
-        bytes memory signature
-    ) public pure returns (bool) {
-        bytes32 messageHash = getMessageHash(_to, _amount, _message, _nonce);
+    function verifySigner(address _signer, string memory _message)
+        external
+        pure
+        returns (address)
+    {
+        bytes32 messageHash = getMessageHash(_message);
         bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
 
-        return recoverSigner(ethSignedMessageHash, signature) == _signer;
+        // Convert signer address and return address that contract computes
+        return recoverSigner(ethSignedMessageHash, abi.encodePacked(_signer));
     }
 
     function recoverSigner(
         bytes32 _ethSignedMessageHash,
         bytes memory _signature
-    ) public pure returns (address) {
-        (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
+    ) internal pure returns (address) {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        if (_signature.length != 65) {
+            revert VerifySigner__InvalidSignatureLength();
+        }
+
+        // Dynamic variable length stored in first 32 bytes (i.e. 65 bytes)
+        assembly {
+            // Set r to be bytes [32,63] inclusive
+            r := mload(add(_signature, 32))
+            // Set s to be bytes [64,95] inclusive
+            s := mload(add(_signature, 64))
+            // Set v to be byte 96
+            v := byte(0, mload(add(_signature, 96))) //
+        }
 
         return ecrecover(_ethSignedMessageHash, v, r, s);
-    }
-
-    function splitSignature(bytes memory sig)
-        public
-        pure
-        returns (
-            bytes32 r,
-            bytes32 s,
-            uint8 v
-        )
-    {
-        require(sig.length == 65, "invalid signature length");
-
-        assembly {
-            r := mload(add(sig, 32))
-            s := mload(add(sig, 64))
-            v := byte(0, mload(add(sig, 96)))
-        }
     }
 }

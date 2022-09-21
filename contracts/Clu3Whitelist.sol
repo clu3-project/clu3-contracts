@@ -20,7 +20,7 @@ contract Clu3Whitelist {
     uint256 private immutable i_maxNumberOfWhitelistAddresses;
 
     // Track the number of whitelisted addresses.
-    uint256 private numberOfAddressesWhitelisted;
+    uint256 private s_numberOfAddressesWhitelisted;
 
     // The owner of the contract
     address private immutable i_owner;
@@ -34,7 +34,7 @@ contract Clu3Whitelist {
     }
 
     // Validate only the owner can call the function
-    modifier onlyOwner() {
+    modifier onlyOwner() virtual {
         if (msg.sender != i_owner) {
             revert Clu3Whitelist__NotOwner();
         }
@@ -55,7 +55,7 @@ contract Clu3Whitelist {
         }
 
         // Validate if the maximum number of whitelisted addresses is not reached. If not, then throw an error.
-        if (numberOfAddressesWhitelisted < i_maxNumberOfWhitelistAddresses) {
+        if (s_numberOfAddressesWhitelisted < i_maxNumberOfWhitelistAddresses) {
             revert Clu3Whitelist__MaxWhitelistAddressesReached();
         }
 
@@ -63,7 +63,7 @@ contract Clu3Whitelist {
         s_whitelistAddresses[_addressToWhitelist] = true;
 
         // Increasing the count
-        numberOfAddressesWhitelisted += 1;
+        s_numberOfAddressesWhitelisted += 1;
     }
 
     function verifyUserAddress(address _whitelistAddress)
@@ -103,12 +103,12 @@ contract Clu3Whitelist {
         s_whitelistAddresses[_addressToRemove] = false;
 
         // This will decrease the number of whitelisted addresses.
-        numberOfAddressesWhitelisted -= 1;
+        s_numberOfAddressesWhitelisted -= 1;
     }
 
     // Get the number of whitelisted addresses
     function getNumberOfWhitelistedAddresses() public view returns (uint256) {
-        return numberOfAddressesWhitelisted;
+        return s_numberOfAddressesWhitelisted;
     }
 
     // Get the maximum number of whitelisted addresses
