@@ -17,19 +17,20 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     let signer, lifespan, maxWhitelistAddresses, clu3Id, message
 
     if (developmentChains.includes(network.name)) {
+        signer = deployer
         lifespan = LIFESPAN
         message = MESSAGE
         clu3Id = CLU3_ID
         maxWhitelistAddresses = MAX_WHITELIST_ADDRESSES
     } else {
+        signer = "0xd1309C93a4bF7C7a1eE81E5fC8291Adb583cc602"
         lifespan = networkConfig[chainId]["lifespan"]
         message = networkConfig[chainId]["message"]
         clu3Id = networkConfig[chainId]["clu3Id"]
         maxWhitelistAddresses = networkConfig[chainId]["maxWhitelistAddresses"]
     }
-    signer = deployer
 
-    let args = [signer, lifespan, message, clu3Id]
+    let args = [signer, lifespan, clu3Id]
 
     log("--------------------------------")
     log("Deploying Clu3, Waiting for confirmations...")

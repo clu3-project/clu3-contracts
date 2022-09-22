@@ -40,4 +40,4 @@ const updateContractAddresses = async () => {
     )
 }
 
-module.exports.tags = ["all", "frontend"]
+//module.exports.tags = ["all", "frontend"]
