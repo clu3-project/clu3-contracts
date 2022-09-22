@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.12;
 
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./Clu3Whitelist.sol";
-import "./VerifySigner.sol";
 
 error Clu3__NotOwner();
 
 error Clu3__TimestampAlreadyPassed();
 
 error Clu3__InvalidSigner();
+
+error Clu3__InvalidSignatureLength();
+
+error Clu3__TimestampClu3IdAlreadyUsed();
 
 /**
  * @title Clu3: a smart contract to prevent bots
@@ -17,7 +21,6 @@ error Clu3__InvalidSigner();
  */
 contract Clu3 is Clu3Whitelist {
     // Inherit verification functions from VerifySigner Library
-    using VerifySigner for address;
 
     // Enumerate the correct Web3 storage implementations
     // Web3 Service (IPFS, Ceramic, Tableland, Filecoin)
@@ -35,14 +38,9 @@ contract Clu3 is Clu3Whitelist {
     address private immutable i_owner;
     uint256 private immutable i_eventTimestamp;
     uint256 private s_maxWhitelistAddresses;
-    string private s_message;
-    string private s_clu3Id;
+    bytes32 private s_ethSignedMessageHash;
+    string private i_clu3Id;
     Web3StorageImplementation private s_web3Service;
-
-    struct Clu3Event {
-        uint256 clu3EventTimestamp;
-        address clueEventAddress;
-    }
 
     event SignerVerified(address indexed _signer);
     event AddressInWhiteList(address indexed _currentAddress);
@@ -50,13 +48,11 @@ contract Clu3 is Clu3Whitelist {
     constructor(
         address _signer,
         uint256 _lifespan,
-        string memory _message,
         string memory _clu3Id
     ) Clu3Whitelist(s_maxWhitelistAddresses) {
         i_signer = _signer;
         i_lifespan = _lifespan;
-        s_clu3Id = _clu3Id;
-        s_message = _message;
+        i_clu3Id = _clu3Id;
         i_eventTimestamp = block.timestamp;
         i_owner = msg.sender;
         s_web3Service = Web3StorageImplementation.ON_CHAIN;
@@ -69,7 +65,7 @@ contract Clu3 is Clu3Whitelist {
         _;
     }
 
-    function senderInWhitelist(address _sender) private returns (bool) {
+    function senderInWhitelist(address _sender) public returns (bool) {
         if (isWhitelisted(_sender)) {
             return true;
         }
@@ -77,16 +73,42 @@ contract Clu3 is Clu3Whitelist {
         return false;
     }
 
-    function isWhitelistImplemented() private view returns (bool) {
+    function isWhitelistImplemented() public view returns (bool) {
         if (getNumberOfWhitelistedAddresses() == 0) {
             return false;
         }
         return true;
     }
 
-    function isClu3Transaction() private returns (bool) {
+    function verifySigner(bytes32 _ethSignedMessageHash)
+        internal
+        view
+        returns (address)
+    {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        bytes memory _signature = abi.encodePacked(i_signer);
+        if (_signature.length != 65) {
+            revert Clu3__InvalidSignatureLength();
+        }
+
+        // Dynamic variable length stored in first 32 bytes (i.e. 65 bytes)
+        assembly {
+            // Set r to be bytes [32,63] inclusive
+            r := mload(add(_signature, 32))
+            // Set s to be bytes [64,95] inclusive
+            s := mload(add(_signature, 64))
+            // Set v to be byte 96
+            v := byte(0, mload(add(_signature, 96))) //
+        }
+
+        return ecrecover(_ethSignedMessageHash, v, r, s);
+    }
+
+    function clu3Transaction() public returns (bytes32) {
         if (!senderInWhitelist(msg.sender) || !isWhitelistImplemented()) {
-            return true;
+            return bytes32(0);
         }
 
         if (i_eventTimestamp + i_lifespan > block.timestamp) {
@@ -94,23 +116,50 @@ contract Clu3 is Clu3Whitelist {
         }
 
         // Verify that the message: "timestamp-clu3_id-sender_address"
-        if ((msg.sender).verifySigner(s_message) != msg.sender) {
+        if (verifySigner(s_ethSignedMessageHash) != i_signer) {
             revert Clu3__InvalidSigner();
         }
 
-        emit SignerVerified(msg.sender);
+        emit SignerVerified(i_signer);
 
-        return false;
+        return
+            bytes32(
+                abi.encodePacked(Strings.toString(i_eventTimestamp), i_clu3Id)
+            );
     }
 
-    // function implementWeb3Storage() private returns (bool) {
-    //     if (s_web3Service == Web3StorageImplementation.IPFS) {
+    // function implementWeb3Storage(bytes32 _clu3Message) private returns (bool) {
+    //     if (s_web3Service == Web3StorageImplementation.ON_CHAIN) {
+    //         _
 
     //     }
-    //     //else if (s_web3Service == Web3StorageImplementation.FILECOIN) {
-    //     //     //s_web3Service;
-    //     // } else if (s_web3Service == Web3StorageImplementation.CERAMIC) {
-    //     //     //s_web3Service;
-    //     // } else if (s_web3Service == Web3StorageImplementation.TABLELAND) {}
+    //     else if(s_web3Service == Web3StorageImplementation.IPFS){
+
+    //     }
+    //     else if (s_web3Service == Web3StorageImplementation.FILECOIN) {
+    //         //s_web3Service;
+    //     } else if (s_web3Service == Web3StorageImplementation.CERAMIC) {
+    //         //s_web3Service;
+    //     } else if (s_web3Service == Web3StorageImplementation.TABLELAND) {}
     // }
+
+    function getWeb3ServiceImplementation()
+        public
+        view
+        returns (Web3StorageImplementation)
+    {
+        return s_web3Service;
+    }
+
+    function getSigner() public view returns (address) {
+        return i_signer;
+    }
+
+    function getClu3Id() public view returns (string memory) {
+        return i_clu3Id;
+    }
+
+    function getLifespan() public view returns (uint256) {
+        return i_lifespan;
+    }
 }
