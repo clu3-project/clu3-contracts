@@ -30,7 +30,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         maxWhitelistAddresses = networkConfig[chainId]["maxWhitelistAddresses"]
     }
 
-    let args = [signer, lifespan, clu3Id]
+    let args = [maxWhitelistAddresses]
 
     log("--------------------------------")
     log("Deploying Clu3, Waiting for confirmations...")

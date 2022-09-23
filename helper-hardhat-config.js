@@ -45,4 +45,8 @@ const CLU3_ID = "3"
 module.exports = {
     networkConfig,
     developmentChains,
+    MAX_WHITELIST_ADDRESSES,
+    LIFESPAN,
+    MESSAGE,
+    CLU3_ID,
 }

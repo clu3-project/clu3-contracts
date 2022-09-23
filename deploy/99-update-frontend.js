@@ -1,9 +1,8 @@
 const { ethers, network } = require("hardhat")
 const fs = require("fs")
 
-const FRONT_END_LOCATION_ABI = "../FRONTEND_LOCATION/constants/abi.json"
-const FRONT_END_LOCATION_CONTRACTS =
-    "../FRONTEND_LOCATION/constants/contractAddress.json"
+const FRONT_END_LOCATION_ABI = "../cludemo/constants/abi.json"
+const FRONT_END_LOCATION_CONTRACTS = "../cludemo/constants/contractAddress.json"
 
 module.exports = async () => {
     if (process.env.UPDATE_FRONT_END.toString() === "true") {
@@ -40,4 +39,4 @@ const updateContractAddresses = async () => {
     )
 }
 
-//module.exports.tags = ["all", "frontend"]
+module.exports.tags = ["all", "frontend"]
