@@ -3,6 +3,7 @@ pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./Clu3Whitelist.sol";
+import "hardhat/console.sol";
 
 error Clu3__NotOwner();
 
@@ -33,26 +34,37 @@ contract Clu3 is Clu3Whitelist {
     }
 
     // State Variables
-    address private s_signer = address(0);
-    uint256 private s_lifespan = uint256(0);
+    address private s_signer;
+    uint256 private s_lifespan;
     string private s_clu3Id;
+    uint256 private s_timestamp;
     string private s_message;
+    string private s_clu3Data;
     Web3StorageImplementation private s_web3Service;
 
     event SignerVerified(address indexed _signer);
-    event AddressInWhiteList(address indexed _currentAddress);
+    event AddressIsWhiteListed(address indexed _address);
+    event Clu3VerifiedWithData(string _clu3Data);
 
-    constructor(uint256 _maxWhitelistAddresses)
-        Clu3Whitelist(_maxWhitelistAddresses)
-    {
+    constructor(
+        address _signer,
+        uint256 _lifespan,
+        string memory _clu3Id,
+        uint256 _maxWhitelistAddresses
+    ) Clu3Whitelist(_maxWhitelistAddresses) {
+        s_signer = _signer;
+        s_lifespan = _lifespan;
+        s_clu3Id = _clu3Id;
         s_web3Service = Web3StorageImplementation.ON_CHAIN;
     }
 
+    // Emit address zero
     function signerInWhitelist(address _signer) public returns (bool) {
-        if (isWhitelisted(_signer)) {
+        if (isWhitelisted(_signer) == true) {
+            emit AddressIsWhiteListed(_signer);
             return true;
         }
-        emit AddressInWhiteList(_signer);
+        emit AddressIsWhiteListed(address(0));
         return false;
     }
 
@@ -63,16 +75,18 @@ contract Clu3 is Clu3Whitelist {
         return true;
     }
 
-    function setClu3Id(string memory _clu3Id) public {
-        s_clu3Id = _clu3Id;
-    }
-
-    function setLifespan(uint256 _lifespan) public {
-        s_lifespan = _lifespan;
-    }
-
+    // clu3Message = signerAddress-timestamp-clueId
     function setClu3Message(string memory _message) public {
         s_message = _message;
+    }
+
+    function setTimestamp(uint256 _timestamp) public {
+        s_timestamp = _timestamp;
+    }
+
+    // clu3Data = timestamp-clueId
+    function setClu3Data(string memory _clu3Data) private {
+        s_clu3Data = _clu3Data;
     }
 
     function verifySigner(bytes memory _signature)
@@ -108,16 +122,28 @@ contract Clu3 is Clu3Whitelist {
 
     function clu3Transaction(uint256 _timestamp, bytes memory _signature)
         public
-        returns (string memory)
+        returns (bool)
     {
-        if (!signerInWhitelist(s_signer) || !isWhitelistImplemented()) {
-            return "Already In Whitelist";
+        if (!signerInWhitelist(s_signer) && !isWhitelistImplemented()) {
+            emit AddressIsWhiteListed(s_signer);
+            return false;
         }
+        setTimestamp(_timestamp);
 
         if (_timestamp + s_lifespan > block.timestamp) {
             revert Clu3__TimestampAlreadyPassed();
         }
 
+        string memory part1 = string.concat("-", s_clu3Id);
+        string memory part2 = string.concat(
+            Strings.toString(s_timestamp),
+            part1
+        );
+        string memory part3 = string.concat("-", part2);
+
+        console.log("Memory Part 3: %s", part3);
+        setClu3Message(string.concat(Strings.toHexString(s_signer), part3));
+        // console.log("Final Clu3 Message: %s", s_message);
         // Verify that the message: "timestamp-clu3_id-sender_address"
         if (verifySigner(_signature) != s_signer) {
             revert Clu3__InvalidSigner();
@@ -125,7 +151,9 @@ contract Clu3 is Clu3Whitelist {
 
         emit SignerVerified(s_signer);
 
-        return string.concat(Strings.toString(_timestamp), s_clu3Id);
+        setClu3Data(string.concat(Strings.toString(_timestamp), s_clu3Id));
+        emit Clu3VerifiedWithData(s_clu3Data);
+        return true;
     }
 
     // function implementWeb3Storage(bytes32 _clu3Message) private returns (bool) {
@@ -165,5 +193,9 @@ contract Clu3 is Clu3Whitelist {
 
     function getLifespan() public view returns (uint256) {
         return s_lifespan;
+    }
+
+    function getTimestamp() public view returns (uint256) {
+        return s_timestamp;
     }
 }

@@ -19,6 +19,8 @@ module.exports = {
     networks: {
         hardhat: {
             chainId: 31337,
+            gas: 2100000,
+            gasPrice: 8000000000,
         },
         goerli: {
             url: GOERLI_RPC_URL,
@@ -53,12 +55,30 @@ module.exports = {
         compilers: [
             {
                 version: "0.8.7",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
             },
             {
                 version: "0.8.9",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
             },
             {
                 version: "0.8.12",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
             },
         ],
     },

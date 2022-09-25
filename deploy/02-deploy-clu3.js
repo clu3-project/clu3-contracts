@@ -4,7 +4,7 @@ const {
     MAX_WHITELIST_ADDRESSES,
     CLU3_ID,
     LIFESPAN,
-    MESSAGE,
+    SIGNER,
 } = require("../helper-hardhat-config")
 const { network, ethers } = require("hardhat")
 const { verify } = require("../utils/verify")
@@ -17,20 +17,18 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     let signer, lifespan, maxWhitelistAddresses, clu3Id, message
 
     if (developmentChains.includes(network.name)) {
-        signer = deployer
+        signer = SIGNER
         lifespan = LIFESPAN
-        message = MESSAGE
         clu3Id = CLU3_ID
         maxWhitelistAddresses = MAX_WHITELIST_ADDRESSES
     } else {
-        signer = "0xd1309C93a4bF7C7a1eE81E5fC8291Adb583cc602"
+        signer = networkConfig[chainId]["signer"]
         lifespan = networkConfig[chainId]["lifespan"]
-        message = networkConfig[chainId]["message"]
         clu3Id = networkConfig[chainId]["clu3Id"]
         maxWhitelistAddresses = networkConfig[chainId]["maxWhitelistAddresses"]
     }
 
-    let args = [maxWhitelistAddresses]
+    let args = [signer, lifespan, clu3Id, maxWhitelistAddresses]
 
     log("--------------------------------")
     log("Deploying Clu3, Waiting for confirmations...")

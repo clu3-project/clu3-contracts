@@ -50,12 +50,12 @@ contract Clu3Whitelist {
         onlyOwner
     {
         // Validate the caller is not already part of the whitelist.
-        if (!s_whitelistAddresses[_addressToWhitelist]) {
+        if (s_whitelistAddresses[_addressToWhitelist]) {
             revert Clu3Whitelist__AlreadyInWhitelist();
         }
 
         // Validate if the maximum number of whitelisted addresses is not reached. If not, then throw an error.
-        if (s_numberOfAddressesWhitelisted < i_maxNumberOfWhitelistAddresses) {
+        if (s_numberOfAddressesWhitelisted > i_maxNumberOfWhitelistAddresses) {
             revert Clu3Whitelist__MaxWhitelistAddressesReached();
         }
 
@@ -77,7 +77,7 @@ contract Clu3Whitelist {
     }
 
     /**
-     *  @notice function isWhitelisted checks if function is whitelisted
+     *  @notice function isWhitelisted checks if signer address is whitelisted
      *  @dev
      */
     function isWhitelisted(address _whitelistAddress)
